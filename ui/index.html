@@ -1,0 +1,320 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rubik's Cube Decision Arena</title>
+<style>
+  :root{
+    --bg:#0b0d12; --panel:#141821; --panel2:#1b2130; --line:#262d3d;
+    --txt:#e8ecf4; --dim:#8b94a7; --acc:#5eead4; --warn:#fbbf24; --bad:#f87171; --good:#34d399;
+    --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    --cube:116px;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--txt);
+       font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;}
+  header{padding:20px 24px 14px;border-bottom:1px solid var(--line);position:sticky;top:0;
+         background:linear-gradient(180deg,#0b0d12 70%,rgba(11,13,18,.85));z-index:10;backdrop-filter:blur(6px)}
+  h1{margin:0 0 4px;font-size:19px;letter-spacing:.2px}
+  .sub{color:var(--dim);font-size:13px}
+  .controls{display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin-top:14px;font-size:12px;color:var(--dim)}
+  .controls label{display:flex;gap:6px;align-items:center}
+  input,select{background:var(--panel2);color:var(--txt);border:1px solid var(--line);
+               border-radius:7px;padding:6px 8px;font-family:var(--mono);font-size:12px}
+  input[type=number]{width:70px}
+  button{background:var(--acc);color:#04211c;border:0;border-radius:8px;padding:8px 16px;
+         font-weight:650;font-size:13px;cursor:pointer}
+  button:disabled{background:#2b3446;color:#697089;cursor:not-allowed}
+  #status{font-family:var(--mono)}
+  .scramble{font-family:var(--mono);font-size:11px;color:var(--dim);margin-top:10px;max-width:1400px}
+  .scramble b{color:var(--txt)}
+
+  .modes-wrap{margin-top:12px}
+  .modes-wrap>summary{cursor:pointer;color:var(--dim);font-size:12px;font-family:var(--mono);
+                      list-style:none;user-select:none;display:inline-block}
+  .modes-wrap>summary::-webkit-details-marker{display:none}
+  .modes-wrap>summary::before{content:"\25B8 ";color:var(--acc)}
+  .modes-wrap[open]>summary::before{content:"\25BE "}
+  .modes{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:10px}
+  @media (max-width:1180px){.modes{grid-template-columns:repeat(2,1fr)}}
+  .mcard{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:9px 11px}
+  .mcard b{display:block;font-family:var(--mono);font-size:11px;color:var(--acc);margin-bottom:3px}
+  .mcard span{font-size:11.5px;color:var(--dim);line-height:1.45}
+  .note{color:var(--dim);font-size:11px;margin-top:10px;font-family:var(--mono)}
+
+  main{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;padding:12px 24px 40px}
+  @media (max-width:1200px){main{grid-template-columns:repeat(2,1fr)} }
+  @media (max-width:900px){main{grid-template-columns:1fr} }
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:10px;
+         display:flex;flex-direction:column;gap:7px;min-height:0}
+  .panel.solved{border-color:var(--good);box-shadow:0 0 0 1px var(--good) inset}
+  .phead{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+  .plabel{font-weight:650;font-size:14px}
+  .pruntime{color:var(--dim);font-size:10.5px;font-family:var(--mono);margin-top:2px}
+  .chip{font-size:10.5px;font-family:var(--mono);padding:3px 8px;border-radius:999px;
+        border:1px solid var(--line);color:var(--dim);white-space:nowrap}
+  .chip.ready{color:var(--acc);border-color:#1d5a51}
+  .chip.running{color:var(--warn);border-color:#5a4a1d}
+  .chip.done{color:var(--good);border-color:#1d5a3a}
+  .chip.error,.chip.unavailable{color:var(--bad);border-color:#5a1d1d}
+
+  /* ---- real 3D cube (CSS 3D transforms, six faces) ---- */
+  .scene{height:164px;display:flex;align-items:center;justify-content:center;
+         perspective:1000px;perspective-origin:50% 45%}
+  .cube3d{position:relative;width:var(--cube);height:var(--cube);transform-style:preserve-3d;
+          animation:spin 46s linear infinite}
+  @keyframes spin{
+    from{transform:rotateX(-24deg) rotateY(-32deg)}
+    to  {transform:rotateX(-24deg) rotateY(328deg)}
+  }
+  .face3d{position:absolute;inset:0;display:grid;grid-template-columns:repeat(3,1fr);
+          grid-template-rows:repeat(3,1fr);gap:5px;padding:5px;border-radius:9px;
+          background:#07080b;box-shadow:0 0 0 1px #000 inset}
+  .face3d.U{transform:rotateX(90deg)  translateZ(calc(var(--cube)/2))}
+  .face3d.D{transform:rotateX(-90deg) translateZ(calc(var(--cube)/2))}
+  .face3d.F{transform:translateZ(calc(var(--cube)/2))}
+  .face3d.B{transform:rotateY(180deg) translateZ(calc(var(--cube)/2))}
+  .face3d.L{transform:rotateY(-90deg) translateZ(calc(var(--cube)/2))}
+  .face3d.R{transform:rotateY(90deg)  translateZ(calc(var(--cube)/2))}
+  .st{border-radius:5px;background:#222834;
+      box-shadow:inset 0 1px 1px rgba(255,255,255,.35), inset 0 -2px 3px rgba(0,0,0,.45)}
+  .st.c{box-shadow:inset 0 1px 1px rgba(255,255,255,.35), inset 0 -2px 3px rgba(0,0,0,.45),
+                   0 0 0 2px rgba(0,0,0,.55)}
+  .scene.still .cube3d{animation:none;transform:rotateX(-24deg) rotateY(-32deg)}
+
+  .bar{height:5px;background:var(--panel2);border-radius:99px;overflow:hidden}
+  .bar>i{display:block;height:100%;background:linear-gradient(90deg,#38bdf8,var(--acc));width:0%;
+         transition:width .25s ease}
+  .stats{display:flex;flex-wrap:wrap;gap:2px 14px;font-size:11px;color:var(--dim);font-family:var(--mono)}
+  .stats b{color:var(--txt);font-weight:600}
+  .log{display:flex;flex-wrap:nowrap;gap:3px;font-family:var(--mono);font-size:9.5px;align-content:flex-start;
+       max-height:20px;overflow:hidden}
+  .mv{background:var(--panel2);border:1px solid var(--line);border-radius:5px;padding:1px 5px;color:var(--dim)}
+  .mv b{color:var(--txt)}
+  .mv.hit{border-color:#1d5a3a;color:var(--good)}
+  .mv.accepted{border-color:#1d5a51;color:var(--acc)}
+  .mv.neutral{opacity:.7}
+  .mv.corrected{border-color:#5a4a1d;color:var(--warn)}
+  .stats.guided{margin-top:-4px}
+  .err{color:var(--bad);font-size:11px;font-family:var(--mono);white-space:pre-wrap;word-break:break-word}
+  .chip.gen{color:#94a3b8;border-color:#3a4252}
+  .charts{margin:0 24px 40px;background:var(--panel);border:1px solid var(--line);
+          border-radius:14px;padding:16px}
+  .charts h2{margin:0 0 12px;font-size:14px;color:var(--txt);font-weight:650}
+  .charts img{width:100%;height:auto;border-radius:10px;display:block;background:var(--bg)}
+
+  /* short screens (<=840px tall): shrink the cube and drop the move chips so
+     all six panels still fit in one frame instead of requiring a scroll */
+  @media (max-height:840px){
+    :root{--cube:96px}
+    header{padding:14px 24px 10px}
+    .scene{height:132px}
+    .panel{gap:5px;padding:9px}
+    .log{display:none}
+    .stats.guided{margin-top:-2px}
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>Rubik's Cube Decision Arena</h1>
+  <div class="sub">Six decision models. One scramble. One view. Each picks a single move per turn. Three run locally, two on Cloudflare's GPUs, one on its own local server.</div>
+  <div class="controls">
+    <label>seed <input id="seed" value="20261002"></label>
+    <label>mode <select id="mode"><option value="guided">guided</option><option value="greedy">greedy</option><option value="staged">staged</option></select></label>
+    <label>policy <select id="policy"><option value="sample">sample</option><option value="argmax">argmax</option></select></label>
+    <label>moves <input id="moves" type="number" value="24" min="1" max="200"></label>
+    <button id="start" disabled>Start race</button>
+    <span id="status">loading models…</span>
+  </div>
+
+  <details class="modes-wrap">
+    <summary>What the modes mean</summary>
+    <div class="note">Each cube is a real 3D object: six faces modelled in 3D space, three visible at a time, slowly rotating. Progress is scored across all 54 stickers.</div>
+    <div class="modes">
+    <div class="mcard"><b>mode · guided</b><span>The solver knows the optimal move and proposes it. The model picks; if its pick is worse, the solver plays the optimal move instead and it is logged as corrected. The cube always gets solved.</span></div>
+    <div class="mcard"><b>mode · greedy</b><span>One question per turn: which single move improves the cube most right now? No subgoal, no lookahead, no plan. The unaided baseline.</span></div>
+    <div class="mcard"><b>mode · staged</b><span>Same one question per turn, but the model is handed a beginner-method subgoal to serve: white cross, then first layer, then two layers, then solve.</span></div>
+    <div class="mcard"><b>policy · sample</b><span>The move is drawn from the model's own probability distribution. The honest use of a stochastic policy.</span></div>
+    <div class="mcard"><b>policy · argmax</b><span>Always take the single most likely move. Shown for contrast: it collapses and the model repeats one move forever.</span></div>
+    </div>
+  </details>
+
+  <div class="scramble" id="scramble"></div>
+</header>
+<main id="panels"></main>
+<section id="charts" class="charts" hidden>
+  <h2>Scorecard</h2>
+  <img id="chartimg" alt="Run scorecard: progress, latency, guided resolution, final score">
+</section>
+
+<script>
+const COL = {W:"#f3f4f6",Y:"#ffd500",G:"#00a651",B:"#2b6cb0",R:"#e02424",O:"#ff7a00"};
+const FACE_ORDER = ["U","R","F","D","L","B"];
+let ENGINES = [], runId = null, poll = null, enginesPoll = null, lastRunPanels = null;
+
+const $ = s => document.querySelector(s);
+const esc = s => String(s==null?"":s).replace(/[&<>]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
+
+/* ---- real 3D cube: six faces positioned in 3D space ---- */
+function cubeHTML(net){
+  if(!net) return `<div class="scene"><div class="cube3d"></div></div>`;
+  const faces = FACE_ORDER.map(f => {
+    const s = net[f] || "?????????";
+    const cells = [...s].map((ch,i) => {
+      const col = COL[ch] || "#222834";
+      return `<div class="st${i===4?" c":""}" style="background:${col}"></div>`;
+    }).join("");
+    return `<div class="face3d ${f}">${cells}</div>`;
+  }).join("");
+  return `<div class="scene"><div class="cube3d">${faces}</div></div>`;
+}
+
+function panelHTML(p){
+  const pct = Math.round(100*p.facelets/54);
+  const logs = (p.move_log||[]).slice(-14).reverse().map(m =>
+    `<span class="mv ${esc(m.tag||"")}"><b>${esc(m.move)}</b> ${m.facelets}/54${m.confidence!=null?" "+Number(m.confidence).toFixed(2):""}</span>`
+  ).join("");
+  const err = p.error ? `<div class="err">${esc(p.error).slice(0,300)}</div>` : "";
+  const guided = p.optimal_distance!=null ? `
+    <div class="stats guided">
+      <span>solver plan <b>${p.optimal_distance}</b></span>
+      <span>model hit <b>${p.hits}</b></span>
+      <span>accepted <b>${p.accepted}</b></span>
+      <span>neutral <b>${p.neutrals}</b></span>
+      <span>solver corrected <b>${p.corrections}</b></span>
+      ${p.solver?`<span>solver <b>${esc(p.solver)}</b></span>`:""}
+    </div>` : "";
+  const chip = p.solved ? `<div class="chip done">solved</div>`
+                        : `<div class="chip ${esc(p.status)}">${esc(p.status)}</div>`;
+  const gen = p.generative
+    ? `<div class="chip gen">generative</div>` : "";
+  return `<section class="panel${p.solved?" solved":""}">
+    <div class="phead">
+      <div><div class="plabel">${esc(p.label)}</div><div class="pruntime">${esc(p.runtime)}</div></div>
+      <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end">${chip}${gen}</div>
+    </div>
+    ${cubeHTML(p.net)}
+    <div class="bar"><i style="width:${pct}%"></i></div>
+    <div class="stats">
+      <span>moves <b>${p.moves}</b></span>
+      <span>correct <b>${p.facelets}/54</b></span>
+      <span>faces <b>${p.faces}/6</b></span>
+      <span>median <b>${p.median_ms!=null?p.median_ms+" ms":"–"}</b></span>
+      <span>last conf <b>${p.last_confidence!=null?Number(p.last_confidence).toFixed(2):"–"}</b></span>
+    </div>
+    ${guided}
+    <div class="log">${logs}</div>
+    ${err}
+  </section>`;
+}
+
+function render(panels){
+  $("#panels").innerHTML = panels.map(panelHTML).join("");
+}
+
+/* The server renders the scorecard with matplotlib; point an <img> at it.
+   The chart is generated when the run finishes, so the first request can land a
+   moment early. Retry a few times instead of leaving a broken-image icon. */
+function showChart(id){
+  if(!id) return;
+  const img = $("#chartimg");
+  let tries = 0;
+  img.onload = () => { img.onerror = null; };
+  img.onerror = () => {
+    if(tries++ < 6){
+      setTimeout(() => { img.src = "/api/chart/" + encodeURIComponent(id) + "?retry=" + tries; }, 800);
+    }
+  };
+  img.src = "/api/chart/" + encodeURIComponent(id) + "?t=" + Date.now();
+  $("#charts").hidden = false;
+}
+function hideChart(){
+  $("#charts").hidden = true;
+  const img = $("#chartimg");
+  img.onload = null; img.onerror = null;
+  img.removeAttribute("src");
+}
+
+function placeholderPanels(){
+  return ENGINES.map(e => ({
+    key:e.key,label:e.label,runtime:e.runtime,status:e.status,error:e.error,
+    generative:e.generative,
+    moves:0,facelets:0,faces:0,median_ms:null,net:null,move_log:[],solved:false,
+    last_confidence:null,hits:0,accepted:0,neutrals:0,corrections:0,
+    optimal_distance:null,solver:null,
+  }));
+}
+
+async function loadEngines(){
+  const r = await fetch("/api/engines"); const j = await r.json();
+  ENGINES = j.engines;
+  const stillLoading = ENGINES.some(e => e.status === "loading");
+  const ready = ENGINES.filter(e => e.status === "ready").length;
+  $("#status").textContent = stillLoading ? `loading models… (${ready} ready)` :
+    `${ready} of ${ENGINES.length} models ready`;
+  $("#start").disabled = stillLoading || ready === 0;
+  // Only paint the empty placeholders before any run has been shown. Once a run
+  // has rendered its final panels, re-polling engine status must not wipe the
+  // cubes away (that made every cube disappear the moment a race finished).
+  // Re-render the last run's panels rather than the placeholders, so the cubes
+  // and their final solved/missed state stay on screen.
+  if(!runId) render(lastRunPanels || placeholderPanels());
+  if(stillLoading) enginesPoll = setTimeout(loadEngines, 1500);
+}
+
+async function startRace(){
+  $("#start").disabled = true;
+  hideChart();
+  const cfg = {
+    seed: parseInt($("#seed").value,10) || 20261002,
+    mode: $("#mode").value, policy: $("#policy").value,
+    moves: parseInt($("#moves").value,10) || 24,
+  };
+  const r = await fetch("/api/run",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(cfg)});
+  const j = await r.json();
+  if(!r.ok){ $("#status").textContent = "error: "+(j.error||r.status); $("#start").disabled=false; return; }
+  runId = j.run_id;
+  $("#status").textContent = "running "+runId;
+  poll = setInterval(tick, 350);
+  tick();
+}
+
+async function tick(){
+  if(!runId) return;
+  const r = await fetch("/api/run/"+runId);
+  if(!r.ok) return;
+  const run = await r.json();
+  lastRunPanels = run.panels;
+  render(run.panels);
+  $("#scramble").innerHTML = `<b>scramble</b> (seed ${run.seed}): ${esc((run.scramble||[]).join(" "))} — start ${run.start.facelets}/54`;
+  if(run.status === "done"){
+    clearInterval(poll); poll = null; runId = null;
+    $("#status").textContent = "done — press Start to run again";
+    $("#start").disabled = false;
+    showChart(run.id);
+    loadEngines();
+  }
+}
+
+async function showRun(id){
+  const r = await fetch("/api/run/"+id);
+  if(!r.ok){ $("#status").textContent = "unknown run "+id; return; }
+  const run = await r.json();
+  lastRunPanels = run.panels;
+  render(run.panels);
+  $("#scramble").innerHTML = `<b>scramble</b> (seed ${run.seed}): ${esc((run.scramble||[]).join(" "))} — start ${run.start.facelets}/54`;
+  $("#status").textContent = "run "+run.id+" · "+run.status;
+  $("#start").disabled = true;
+  if(run.status === "done") showChart(run.id);
+}
+
+$("#start").addEventListener("click", startRace);
+
+const presetRun = new URLSearchParams(location.search).get("run");
+if(presetRun){ showRun(presetRun); }
+else { loadEngines(); }
+</script>
+</body>
+</html>

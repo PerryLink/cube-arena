@@ -1,0 +1,66 @@
+# ---------------------------------------------------------------------------
+# Rubik's Cube Decision Arena — things that must NOT be committed.
+# Everything here is either machine-local, a secret, or regenerated at runtime.
+# ---------------------------------------------------------------------------
+
+# ---- Python bytecode / packaging -------------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+build/
+dist/
+
+# ---- Virtual environments (the arena's .venv is ~1.1 GB) -------------------
+.venv/
+venv/
+env/
+ENV/
+
+# ---- Secrets / local config ------------------------------------------------
+# .env holds CLOUDFLARE_ACCOUNT_ID / CLOUDFLARE_AUTH_TOKEN / HF_TOKEN.
+# Commit .env.example (the template) — never .env.
+.env
+.env.local
+*.local
+
+# ---- Generated output ------------------------------------------------------
+# Run JSON, scorecard PNGs, probe JSON, progress charts, UI screenshots.
+# Recreated by running the arena; not source.
+results/
+
+# ---- Logs ------------------------------------------------------------------
+*.log
+strands-server.log
+
+# ---- Test / coverage / lint caches -----------------------------------------
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+.coverage.*
+htmlcov/
+
+# ---- Playwright / browser automation ---------------------------------------
+playwright-report/
+test-results/
+playwright/.cache/
+
+# ---- macOS / Windows OS junk -----------------------------------------------
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
+desktop.ini
+
+# ---- Editors / IDEs --------------------------------------------------------
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+MARKETING.md
