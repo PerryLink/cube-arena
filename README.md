@@ -6,6 +6,21 @@ All six are typed **decision models** ("system-one" models) sharing one contract
 
 The point is not "who wins". A cube is a **planning** problem (system-two: lookahead, search). These are **system-one** models: fast, calibrated judgments about the current state. The arena measures exactly where that breaks down.
 
+#### Screenshots
+
+![Cube Arena 1](https://dev-to-uploads.s3.us-east-2.amazonaws.com/uploads/articles/n8j77b1mi7vx9ce2eeyo.png)
+
+![Cube Arena 2](https://dev-to-uploads.s3.us-east-2.amazonaws.com/uploads/articles/7x42kzffgncx1krrpyav.png)
+
+![Cube Arena 3](https://dev-to-uploads.s3.us-east-2.amazonaws.com/uploads/articles/4ln28i16idil87h8kw1d.png)
+
+![Cube Arena 4](https://dev-to-uploads.s3.us-east-2.amazonaws.com/uploads/articles/cm631jhc75rd9gben9r1.png)
+
+#### Watch
+
+1. [https://youtu.be/zHGsbg92S2k](https://youtu.be/zHGsbg92S2k)
+2. [https://youtu.be/pCTgKPE-mo4](https://youtu.be/pCTgKPE-mo4)
+
 ---
 
 ## The six models
